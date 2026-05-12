@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Бакалея Побережья — витрина на Next.js
 
-## Getting Started
+Учебный интернет‑магазин с полным циклом: регистрация, каталог и CRUD через [Otus REST API](http://19429ba06ff2.vps.myjino.ru/api), корзина, создание заказа, управление статусом, сохранение сессии в `localStorage`, обработка `errors[]` сервера с `fieldName`, Vitest‑тесты на хелперы.
 
-First, run the development server:
+### Переменные окружения
+
+Скопируйте `.env.example` → `.env.local`.
+
+- `NEXT_PUBLIC_API_URL` — корень REST (не забудьте `/api`).
+- `NEXT_PUBLIC_COMMAND_ID` — произвольный идентификатор команды; делит данные между группами.
+- `NEXT_PUBLIC_BASE_PATH` — если нужен деплой в подпапку (например, GitHub Pages).
+
+### Локально
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Тесты и качество
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run test   # Vitest + Testing Library окружение
+npm run lint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Production / статический экспорт
 
-## Learn More
+Конфигурация включает `output: 'export'` — сборка попадает в каталог `out/`. Для страниц этого достаточно: все запросы к API выполняются на клиенте.
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Деплой: загрузите `out/` на любой статический хостинг (GitHub Pages, Cloudflare Pages, Netlify Drop и т.д.). При GitHub Pages укажите `NEXT_PUBLIC_BASE_PATH` вида `/имя‑репозитория`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Основные маршруты
 
-## Deploy on Vercel
+- `/` — каталог с пагинацией, фильтром категорий и сортировкой.
+- `/cart` — корзина, оформление заказа.
+- `/orders` — список заказов пользователя со сменой статуса через `PATCH`.
+- `/categories`, `/profile` — защищённые экраны (редирект на `/login`).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Фронт живёт отдельно от серверного репозитория `otus-rest-server`.
