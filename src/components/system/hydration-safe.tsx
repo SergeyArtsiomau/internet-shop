@@ -8,7 +8,6 @@ type HydrationSafeProps = {
   fallback?: ReactNode;
 };
 
-/** Убираем миграции между SSR и сохранением в localStorage */
 export function HydrationSafe({ children, fallback = null }: HydrationSafeProps) {
   const [ready, setReady] = useState(false);
 

@@ -32,18 +32,20 @@ function buildUrl(path: string, search?: URLSearchParams): string {
 
 export async function httpRequest<T>(
   path: string,
-  { method = "GET", body, token, headers, ...rest }: RequestOptions = {},
+  { method = "GET", body, token, headers: headersInit, ...rest }: RequestOptions = {},
   search?: URLSearchParams,
 ): Promise<T> {
-  const finalHeaders = new Headers(headers);
-  if (!(body instanceof FormData) && body !== undefined && !finalHeaders.has("Content-Type")) {
-    finalHeaders.set("Content-Type", "application/json");
+  const headers = new Headers(headersInit);
+  if (!(body instanceof FormData) && body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
-  if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
-  const res = await fetch(buildUrl(path, search), {
+  const response = await fetch(buildUrl(path, search), {
     method,
-    headers: finalHeaders,
+    headers,
     body:
       body instanceof FormData
         ? body
@@ -53,23 +55,23 @@ export async function httpRequest<T>(
     ...rest,
   });
 
-  const text = await res.text();
-  const data = text ? safeParseJson(text) : null;
+  const rawText = await response.text();
+  const payload = rawText ? safeParseJson(rawText) : null;
 
-  if (!res.ok) {
-    const parsed = isApiErrorsPayload(data)
-      ? parseApiErrors(data)
+  if (!response.ok) {
+    const parsed = isApiErrorsPayload(payload)
+      ? parseApiErrors(payload)
       : {
           message:
-            typeof data === "object" && data && "message" in data
-              ? String((data as { message: unknown }).message)
-              : res.statusText || "Ошибка сети",
+            typeof payload === "object" && payload && "message" in payload
+              ? String((payload as { message: unknown }).message)
+              : response.statusText || "Ошибка сети",
           fieldErrors: {},
         };
-    throw new ApiRequestError(res.status, data ?? text, parsed);
+    throw new ApiRequestError(response.status, payload ?? rawText, parsed);
   }
 
-  return data as T;
+  return payload as T;
 }
 
 function safeParseJson(text: string) {

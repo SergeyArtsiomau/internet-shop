@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { useAuthStore } from "@/store/auth-store";
@@ -35,13 +35,34 @@ const optionalPositiveFromInput = z
   });
 
 const productSchema = z.object({
-  name: z.string().min(1, "Название обязательно"),
+  name: z.string().trim().min(1, "Укажите название"),
   desc: z.string().optional(),
-  price: z.coerce.number().positive("Цена должна быть больше 0"),
+  price: z.coerce.number().positive("Укажите цену больше нуля"),
   oldPrice: optionalPositiveFromInput,
   categoryId: z.string().min(1, "Выберите категорию"),
   photo: z.string().optional(),
 });
+
+const fieldControlClass =
+  "w-full rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--card)_88%,transparent)] px-4 py-2.5 text-sm shadow-sm transition-[border-color,box-shadow] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--accent)_22%,transparent)]";
+
+function FieldLabel({ children, required }: { children: ReactNode; required?: boolean }) {
+  return (
+    <span className="font-medium text-[var(--foreground)]">
+      {children}
+      {required ? (
+        <span className="ml-0.5 text-red-500" title="Обязательное поле" aria-hidden="true">
+          *
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-sm text-red-600 dark:text-red-400">{message}</p>;
+}
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
@@ -117,88 +138,123 @@ function ProductForm({ token, categories, product, onSaved, onCancel }: ProductF
   };
 
   return (
-    <form className="grid gap-4" onSubmit={handleSubmit(saveProduct)} noValidate>
-      <label className="grid gap-2 text-sm">
-        Название
-        <input
-          className="rounded-2xl border border-[var(--border)] bg-transparent px-4 py-3"
-          {...register("name")}
-        />
-        {errors.name ? <span className="text-sm text-red-500">{errors.name.message}</span> : null}
-      </label>
-      <label className="grid gap-2 text-sm">
-        Категория
-        <select
-          className="rounded-2xl border border-[var(--border)] bg-transparent px-4 py-3"
-          {...register("categoryId")}
-        >
-          <option value="">Выберите значение</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        {errors.categoryId ? (
-          <span className="text-sm text-red-500">{errors.categoryId.message}</span>
-        ) : null}
-      </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm">
-          Цена
+    <form className="grid gap-8" onSubmit={handleSubmit(saveProduct)} noValidate>
+      <fieldset className="grid gap-4">
+        <legend className="sr-only">Основные данные</legend>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Основное</p>
+        <label className="grid gap-1.5 text-sm">
+          <FieldLabel required>Название</FieldLabel>
           <input
-            type="number"
-            step="0.01"
-            className="rounded-2xl border border-[var(--border)] bg-transparent px-4 py-3"
-            {...register("price")}
+            required
+            aria-required="true"
+            placeholder="Например, Оливковое масло"
+            className={fieldControlClass}
+            {...register("name")}
           />
-          {errors.price ? <span className="text-sm text-red-500">{errors.price.message}</span> : null}
+          <FieldError message={errors.name?.message} />
         </label>
-        <label className="grid gap-2 text-sm">
-          Старая цена
-          <input
-            type="number"
-            step="0.01"
-            className="rounded-2xl border border-[var(--border)] bg-transparent px-4 py-3"
-            {...register("oldPrice")}
+        <label className="grid gap-1.5 text-sm">
+          <FieldLabel required>Категория</FieldLabel>
+          <select
+            required
+            aria-required="true"
+            className={fieldControlClass}
+            {...register("categoryId")}
+          >
+            <option value="">Выберите категорию</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <FieldError message={errors.categoryId?.message} />
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-1.5 text-sm">
+            <FieldLabel required>Цена, ₽</FieldLabel>
+            <input
+              type="number"
+              step="0.01"
+              min={0.01}
+              required
+              aria-required="true"
+              placeholder="0.00"
+              className={fieldControlClass}
+              {...register("price")}
+            />
+            <FieldError message={errors.price?.message} />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium text-[var(--foreground)]">Старая цена, ₽</span>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="Для акции"
+              className={fieldControlClass}
+              {...register("oldPrice")}
+            />
+            <FieldError message={errors.oldPrice?.message} />
+          </label>
+        </div>
+      </fieldset>
+      <fieldset className="grid gap-4">
+        <legend className="sr-only">Описание и фото</legend>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Дополнительно</p>
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-medium text-[var(--foreground)]">Описание</span>
+          <textarea
+            rows={3}
+            placeholder="Кратко о товаре"
+            className={clsx(fieldControlClass, "min-h-[5.5rem] resize-y")}
+            {...register("desc")}
           />
-          {errors.oldPrice ? <span className="text-sm text-red-500">{errors.oldPrice.message}</span> : null}
         </label>
-      </div>
-      <label className="grid gap-2 text-sm">
-        Описание
-        <textarea
-          rows={3}
-          className="rounded-2xl border border-[var(--border)] bg-transparent px-4 py-3"
-          {...register("desc")}
-        />
-      </label>
-      <label className="grid gap-2 text-sm">
-        Фото по URL после загрузки
-        <input readOnly className="rounded-2xl border border-[var(--border)] bg-transparent px-4 py-3" {...register("photo")} />
-        {errors.photo ? <span className="text-sm text-red-500">{errors.photo.message}</span> : null}
-      </label>
-      <label className="grid gap-2 text-xs uppercase tracking-[0.3em] text-neutral-500">
-        загрузить файл
-        <input
-          type="file"
-          accept="image/*"
-          className="text-sm normal-case tracking-normal"
-          onChange={(event) => void handleUpload(event.target.files?.[0])}
-        />
-      </label>
-      <div className="flex flex-wrap justify-end gap-3">
-        <button type="button" className="pill" onClick={onCancel}>
-          Отмена
-        </button>
-        <button
-          disabled={isSubmitting}
-          type="submit"
-          className="pill border-transparent bg-[var(--accent)] text-white dark:text-[#1f0f0b]"
-        >
-          Сохранить
-        </button>
-      </div>
+        <div className="grid gap-4 rounded-2xl border border-dashed border-[var(--border)] bg-[color-mix(in_srgb,var(--accent-muted)_35%,transparent)] p-4">
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium text-[var(--foreground)]">Изображение</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              Загрузите файл — ссылка подставится автоматически
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="text-sm file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white dark:file:text-[#1b0b07]"
+              onChange={(event) => void handleUpload(event.target.files?.[0])}
+            />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="text-neutral-600 dark:text-neutral-400">Ссылка на фото</span>
+            <input
+              readOnly
+              placeholder="Появится после загрузки"
+              className={clsx(fieldControlClass, "text-neutral-500")}
+              {...register("photo")}
+            />
+            <FieldError message={errors.photo?.message} />
+          </label>
+        </div>
+      </fieldset>
+      <footer className="flex flex-col-reverse gap-4 border-t border-[var(--border)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          <span className="text-red-500" aria-hidden="true">
+            *
+          </span>{" "}
+          — обязательное поле
+        </p>
+        <div className="flex flex-wrap justify-end gap-3">
+          <button type="button" className="pill px-5 py-2.5" onClick={onCancel}>
+            Отмена
+          </button>
+          <button
+            disabled={isSubmitting}
+            type="submit"
+            className="pill border-transparent bg-[var(--accent)] px-5 py-2.5 font-semibold text-white disabled:opacity-60 dark:text-[#1f0f0b]"
+          >
+            {isSubmitting ? "Сохраняем…" : "Сохранить"}
+          </button>
+        </div>
+      </footer>
     </form>
   );
 }
@@ -217,7 +273,6 @@ function ProductTile({ product, editable, onEdit }: ProductTileProps) {
     <article className="soft-card flex h-full flex-col gap-4 p-5">
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-200 dark:bg-neutral-800">
         {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={photo} alt={product.name} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-neutral-500">Нет фото</div>
@@ -301,7 +356,7 @@ export function CatalogScreen() {
     queryFn: () => fetchProducts(filters, token),
   });
 
-  const [productModal, setProductModal] = useState<Product | undefined | null>(null); // undefined closed, Product edit, {} new
+  const [productModal, setProductModal] = useState<Product | undefined | null>(null);
 
   const toggleCategory = (id: string) => {
     setCategoryIds((prev) => (prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]));
@@ -474,7 +529,6 @@ export function CatalogScreen() {
       <Modal
         open={productModal !== undefined}
         title={productModal ? "Редактирование товара" : "Новый товар"}
-        subtitle="Поля «name» и «categoryId» обязательны на стороне API — форма ловит это заранее."
         onClose={() => setProductModal(undefined)}
       >
         {token && productModal !== undefined ? (

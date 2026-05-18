@@ -1,5 +1,3 @@
-/** Типы интерфейса; ответы API приводим к этим формам локально */
-
 export type Category = {
   id: string;
   name: string;
@@ -35,7 +33,7 @@ export enum OrderStatus {
 
 export type OrderProduct = {
   _id: string;
-  product: Product;
+  product: Product | null;
   quantity: number;
 };
 

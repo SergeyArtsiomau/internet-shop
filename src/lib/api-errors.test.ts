@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isApiErrorsPayload,
+  isDuplicateEmailError,
   parseApiErrors,
   isAuthRelatedError,
 } from "@/lib/api-errors";
@@ -42,5 +43,19 @@ describe("parseApiErrors", () => {
     expect(parseApiErrors({})).toMatchObject({
       fieldErrors: {},
     });
+  });
+
+  it("привязывает дубликат email к полю email", () => {
+    const parsed = parseApiErrors({
+      errors: [
+        {
+          extensions: { code: "ERR_ACCOUNT_ALREADY_EXIST" },
+          name: "AccountAlreadyExistError",
+          message: "Account with this email already exists",
+        },
+      ],
+    });
+    expect(parsed.fieldErrors.email).toBe("Account with this email already exists");
+    expect(isDuplicateEmailError(parsed)).toBe(true);
   });
 });

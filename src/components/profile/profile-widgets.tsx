@@ -11,7 +11,17 @@ import { changePassword, fetchProfile, updateProfile } from "@/services/shop-api
 import { useAuthStore } from "@/store/auth-store";
 
 const nameSchema = z.object({
-  name: z.string().min(2, "Имя слишком короткое"),
+  name: z
+    .string()
+    .transform((value) => value.trim())
+    .pipe(
+      z
+        .string()
+        .min(2, "Имя слишком короткое")
+        .refine((value) => !/\s/.test(value), {
+          message: "Пробелы в нике сервер не принимает — одно слово или, например, Sergey_Artsiombau.",
+        }),
+    ),
 });
 
 type NameFormValues = z.infer<typeof nameSchema>;
@@ -107,7 +117,7 @@ export function NameUpdateForm() {
     onError: (error: unknown) => {
       if (!(error instanceof ApiRequestError)) return;
       applyServerFieldErrors(setError, error.parsed);
-      if (!Object.keys(error.parsed.fieldErrors).length) {
+      if (!error.parsed.fieldErrors.name) {
         setError("name", { type: "server", message: error.parsed.message });
       }
     },
@@ -117,18 +127,21 @@ export function NameUpdateForm() {
     <section className="soft-card px-8 py-8">
       <h2 className="font-semibold text-lg">Отображаемое имя</h2>
       <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-        Используйте понятную подпись, чтобы члены группы понимали, кто вносил изменения списком.
+        Имя на сервере — это ник: без пробелов внутри (иначе API вернёт ошибку). Подпись видна группе при
+        правках каталога.
       </p>
       <form
         className="mt-6 grid gap-4"
         onSubmit={handleSubmit(async (vals) => {
-          await mutation.mutateAsync(vals);
-          reset(vals);
+          try {
+            await mutation.mutateAsync(vals);
+            reset(vals);
+          } catch {}
         })}
         noValidate
       >
         <label className="grid gap-2 text-sm">
-          Имя
+          Ник для сервера
           <input className="rounded-2xl border border-[var(--border)] px-4 py-3" {...register("name")} />
           {errors.name ? <span className="text-sm text-red-500">{errors.name.message}</span> : null}
         </label>

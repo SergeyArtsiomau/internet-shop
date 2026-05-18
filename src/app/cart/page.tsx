@@ -24,12 +24,12 @@ export default function CartPage() {
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const mutation = useMutation({
+  const checkout = useMutation({
     mutationFn: async () => {
       if (!token) throw new Error("Нет токена");
       return createOrder(
         token,
-        items.map((line) => ({ id: line.productId, quantity: line.quantity })),
+        items.map((row) => ({ id: row.productId, quantity: row.quantity })),
       );
     },
     onMutate: () => setCheckoutError(null),
@@ -62,14 +62,13 @@ export default function CartPage() {
         </div>
       ) : (
         <div className="grid gap-6">
-          {items.map((line) => {
-            const thumb = resolveMediaUrl(line.thumb);
+          {items.map((item) => {
+            const thumbUrl = resolveMediaUrl(item.thumb);
             return (
-              <article key={line.productId} className="soft-card flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+              <article key={item.productId} className="soft-card flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
                 <div className="h-36 w-full overflow-hidden rounded-2xl bg-neutral-800 sm:h-28 sm:w-40">
-                  {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt={line.title} className="h-full w-full object-cover" />
+                  {thumbUrl ? (
+                    <img src={thumbUrl} alt={item.title} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3em] text-neutral-400">
                       нет изображения
@@ -77,25 +76,25 @@ export default function CartPage() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className="text-lg font-semibold">{line.title}</p>
+                  <p className="text-lg font-semibold">{item.title}</p>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {line.price.toFixed(2)} ₽ · количество
+                    {item.price.toFixed(2)} ₽ · количество
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <input
                       type="number"
                       min={1}
-                      value={line.quantity}
+                      value={item.quantity}
                       className="w-24 rounded-2xl border border-[var(--border)] px-3 py-2"
-                      onChange={(event) => setQty(line.productId, Number(event.target.value))}
+                      onChange={(event) => setQty(item.productId, Number(event.target.value))}
                     />
-                    <button type="button" className="text-sm text-red-500" onClick={() => removeLine(line.productId)}>
+                    <button type="button" className="text-sm text-red-500" onClick={() => removeLine(item.productId)}>
                       Убрать
                     </button>
                   </div>
                 </div>
                 <div className="text-right text-xl font-semibold">
-                  {(line.price * line.quantity).toFixed(2)} ₽
+                  {(item.price * item.quantity).toFixed(2)} ₽
                 </div>
               </article>
             );
@@ -112,14 +111,14 @@ export default function CartPage() {
           </div>
           <button
             type="button"
-            disabled={mutation.isPending}
+            disabled={checkout.isPending}
             className="pill border-[var(--accent)] bg-[var(--accent)] text-white dark:text-[#22110b]"
             onClick={() => {
               if (!token) {
                 router.push(`/login?next=${encodeURIComponent("/cart")}`);
                 return;
               }
-              mutation.mutate();
+              checkout.mutate();
             }}
           >
             Оформить заказ через API

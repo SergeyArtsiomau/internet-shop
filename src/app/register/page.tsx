@@ -6,6 +6,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ApiRequestError } from "@/lib/http-client";
+import {
+  getDisplayErrorMessage,
+  isDuplicateEmailError,
+} from "@/lib/api-errors";
 import { applyServerFieldErrors } from "@/lib/form-helpers";
 import { COMMAND_ID } from "@/lib/env";
 import { signUp } from "@/services/shop-api";
@@ -14,7 +18,11 @@ import { useClientGate } from "@/hooks/use-client-gate";
 
 const schema = z
   .object({
-    email: z.string().email("Некорректный email"),
+    email: z
+      .string()
+      .trim()
+      .email("Некорректный email")
+      .transform((value) => value.toLowerCase()),
     password: z.string().min(8, "Пароль минимум 8 символов"),
     confirm: z.string().min(8, "Повторите пароль"),
     commandId: z.string(),
@@ -36,6 +44,7 @@ export default function RegisterPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
+    clearErrors,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -44,6 +53,8 @@ export default function RegisterPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
+    clearErrors();
+
     try {
       const result = await signUp({
         email: values.email,
@@ -54,13 +65,21 @@ export default function RegisterPage() {
       router.replace("/profile");
     } catch (error) {
       if (error instanceof ApiRequestError) {
-        applyServerFieldErrors(setError, error.parsed);
-        if (!Object.keys(error.parsed.fieldErrors).length) {
-          setError("email", { message: error.parsed.message, type: "server" });
+        const { parsed } = error;
+        const message = getDisplayErrorMessage(parsed);
+
+        applyServerFieldErrors(setError, parsed, { fallbackField: "email" });
+
+        if (isDuplicateEmailError(parsed) || !parsed.fieldErrors.email) {
+          setError("email", {
+            type: "server",
+            message: parsed.fieldErrors.email ?? message,
+          });
         }
-      } else {
-        setError("email", { message: "Регистрация не выполнена", type: "server" });
+        return;
       }
+
+      setError("email", { message: "Регистрация не выполнена", type: "server" });
     }
   };
 
@@ -80,6 +99,7 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
+
       <form className="grid gap-5" onSubmit={handleSubmit(onSubmit)} noValidate>
         <label className="grid gap-2 text-sm">
           Email

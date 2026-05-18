@@ -11,33 +11,40 @@ import { OrderStatus, type Order } from "@/types/shop";
 
 function OrdersDashboard() {
   const token = useAuthStore((state) => state.token);
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const queryClient = useQueryClient();
 
-  const filters = useMemo(
+  const listParams = useMemo(
     () => ({
-      pageNumber: page,
+      pageNumber: currentPage,
       pageSize: 8,
     }),
-    [page],
+    [currentPage],
   );
 
-  const ordersQuery = useQuery({
-    queryKey: ["orders", token, page],
-    queryFn: () => fetchOrders(filters, token),
+  const {
+    data: ordersResponse,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["orders", token, currentPage],
+    queryFn: () => fetchOrders(listParams, token),
     enabled: Boolean(token),
   });
 
-  const statusMutation = useMutation({
+  const saveOrderStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: OrderStatus }) => patchOrder(token!, id, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
   });
 
-  const statuses = Object.values(OrderStatus);
+  const allStatuses = Object.values(OrderStatus);
 
-  const totalPages =
-    ordersQuery.data?.pagination && ordersQuery.data.pagination.pageSize !== 0
-      ? Math.max(1, Math.ceil(ordersQuery.data.pagination.total / ordersQuery.data.pagination.pageSize))
+  const pageCount =
+    ordersResponse?.pagination && ordersResponse.pagination.pageSize !== 0
+      ? Math.max(
+          1,
+          Math.ceil(ordersResponse.pagination.total / ordersResponse.pagination.pageSize),
+        )
       : 1;
 
   return (
@@ -51,35 +58,35 @@ function OrdersDashboard() {
         </p>
       </header>
 
-      {ordersQuery.isLoading ? (
+      {isLoading ? (
         <div className="rounded-3xl border border-dashed px-6 py-14 text-neutral-600 dark:text-neutral-300">
           Подтягиваем заказы Otus REST…
         </div>
       ) : null}
 
-      {ordersQuery.isError ? (
+      {isError ? (
         <div className="rounded-3xl border border-red-400/70 bg-red-500/15 px-5 py-4 text-red-900 dark:bg-red-500/35 dark:text-red-50">
           Не удалось получить список заказов.
         </div>
       ) : null}
 
       <div className="grid gap-6">
-        {ordersQuery.data?.data.map((order) => {
-          const syncing =
-            statusMutation.isPending && statusMutation.variables?.id === order.id;
+        {ordersResponse?.data.map((order) => {
+          const isUpdatingThisOrder =
+            saveOrderStatus.isPending && saveOrderStatus.variables?.id === order.id;
           return (
             <OrderCard
               key={order.id}
               order={order}
-              statuses={statuses}
-              syncing={syncing}
-              onStatusChange={(status) => statusMutation.mutate({ id: order.id, status })}
+              statuses={allStatuses}
+              statusBusy={isUpdatingThisOrder}
+              onStatusChange={(status) => saveOrderStatus.mutate({ id: order.id, status })}
             />
           );
         })}
       </div>
 
-      {!ordersQuery.data?.data.length && !ordersQuery.isLoading ? (
+      {!ordersResponse?.data.length && !isLoading ? (
         <div className="soft-card px-10 py-12 text-neutral-700 dark:text-neutral-200">
           Пока пусто. Оформите заказ через корзину — появится и здесь.
         </div>
@@ -87,13 +94,23 @@ function OrdersDashboard() {
 
       <nav className="flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-[var(--border)] pt-6">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Страница {ordersQuery.data?.pagination.pageNumber ?? page} из {Math.max(totalPages, 1)}
+          Страница {ordersResponse?.pagination.pageNumber ?? currentPage} из {Math.max(pageCount, 1)}
         </p>
         <div className="flex gap-3">
-          <button type="button" className="pill" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          <button
+            type="button"
+            className="pill"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((n) => Math.max(1, n - 1))}
+          >
             Ранее
           </button>
-          <button type="button" className="pill" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+          <button
+            type="button"
+            className="pill"
+            disabled={currentPage >= pageCount}
+            onClick={() => setCurrentPage((n) => n + 1)}
+          >
             Далее
           </button>
         </div>
@@ -113,11 +130,11 @@ export default function OrdersPage() {
 type OrderCardProps = {
   order: Order;
   statuses: OrderStatus[];
-  syncing: boolean;
+  statusBusy: boolean;
   onStatusChange(status: OrderStatus): void;
 };
 
-function OrderCard({ order, statuses, syncing, onStatusChange }: OrderCardProps) {
+function OrderCard({ order, statuses, statusBusy, onStatusChange }: OrderCardProps) {
   return (
     <article className="soft-card px-8 py-6">
       <div className="flex flex-wrap gap-6">
@@ -130,7 +147,7 @@ function OrderCard({ order, statuses, syncing, onStatusChange }: OrderCardProps)
             Статус
             <select
               className="pill bg-transparent px-4 py-2"
-              disabled={syncing}
+              disabled={statusBusy}
               value={order.status}
               onChange={(event) => onStatusChange(event.target.value as OrderStatus)}
             >
@@ -147,19 +164,29 @@ function OrderCard({ order, statuses, syncing, onStatusChange }: OrderCardProps)
         </div>
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {order.products.map((line) => {
-          const thumb = resolveMediaUrl(line.product.photo);
+        {order.products.map((row) => {
+          const product = row.product;
+          const imageSrc = product ? resolveMediaUrl(product.photo) : undefined;
+          const name = product?.name ?? "Товар недоступен";
+          const totalRub =
+            product != null ? (product.price * row.quantity).toFixed(2) : null;
           return (
-            <div key={`${order.id}-${line._id}`} className="rounded-2xl border border-[var(--border)] px-4 py-3">
+            <div key={`${order.id}-${row._id}`} className="rounded-2xl border border-[var(--border)] px-4 py-3">
               <div className="flex gap-3">
-                {thumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumb} alt={line.product.name} className="h-24 w-24 rounded-xl object-cover" />
-                ) : null}
+                {imageSrc ? (
+                  <img src={imageSrc} alt={name} className="h-24 w-24 rounded-xl object-cover" />
+                ) : (
+                  <div
+                    className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-neutral-200 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                    aria-hidden
+                  >
+                    {product ? "Нет фото" : "—"}
+                  </div>
+                )}
                 <div className="space-y-1 text-sm">
-                  <p className="font-semibold">{line.product.name}</p>
-                  <p className="text-neutral-600 dark:text-neutral-400">× {line.quantity}</p>
-                  <p>{(line.product.price * line.quantity).toFixed(2)} ₽</p>
+                  <p className="font-semibold">{name}</p>
+                  <p className="text-neutral-600 dark:text-neutral-400">× {row.quantity}</p>
+                  <p>{totalRub != null ? `${totalRub} ₽` : "—"}</p>
                 </div>
               </div>
             </div>

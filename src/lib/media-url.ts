@@ -1,8 +1,5 @@
 import { API_URL } from "@/lib/env";
 
-/**
- * Строим абсолютный URL медиафайла. Сервер может отдавать абсолютный URL или путь `/img/...`
- */
 export function resolveMediaUrl(photo?: string | null): string | undefined {
   return resolveMediaUrlWithBase(photo, API_URL);
 }

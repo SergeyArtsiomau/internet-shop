@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-/** Минимальная задержка, чтобы zustand persist успел подтянуть localStorage */
 export function useClientGate() {
-  const [ready, setReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const id = window.requestAnimationFrame(() => setReady(true));
-    return () => window.cancelAnimationFrame(id);
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  return ready;
+  return mounted;
 }

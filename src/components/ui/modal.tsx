@@ -68,7 +68,7 @@ export function Modal({ open, title, subtitle, footer, children, onClose }: Moda
             type="button"
             onClick={onClose}
             aria-label="Закрыть"
-            className="rounded-xl border px-4 py-2 text-sm uppercase tracking-[0.15em]"
+            className="pill shrink-0 px-4 py-2 text-sm font-medium"
           >
             Закрыть
           </button>

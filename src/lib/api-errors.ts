@@ -22,19 +22,18 @@ export type ParsedApiError = {
   fieldErrors: Record<string, string>;
 };
 
-function pickPrimaryMessage(parts: ParsedApiError): string {
-  if (parts.message) return parts.message;
-  const firstField = Object.values(parts.fieldErrors)[0];
+function pickPrimaryMessage(parsed: ParsedApiError): string {
+  if (parsed.message) return parsed.message;
+  const firstField = Object.values(parsed.fieldErrors)[0];
   return firstField ?? "Запрос не выполнен";
 }
 
 export function isApiErrorsPayload(value: unknown): value is ApiErrorShape {
   if (!value || typeof value !== "object") return false;
-  const rec = value as ApiErrorShape;
-  return Array.isArray(rec.errors) && rec.errors.length > 0;
+  const candidate = value as ApiErrorShape;
+  return Array.isArray(candidate.errors) && candidate.errors.length > 0;
 }
 
-/** Разбираем ответ ошибки Otus REST в удобный для форм вид */
 export function parseApiErrors(data: unknown): ParsedApiError {
   if (!isApiErrorsPayload(data)) {
     return {
@@ -47,7 +46,7 @@ export function parseApiErrors(data: unknown): ParsedApiError {
 
   data.errors.forEach((err, index) => {
     const fallbackName = `_error_${index}`;
-    const label = err.fieldName ?? fallbackName;
+    const label = resolveErrorFieldName(err, fallbackName);
     fieldErrors[label] = err.message ?? err.name ?? label;
   });
 
@@ -57,6 +56,36 @@ export function parseApiErrors(data: unknown): ParsedApiError {
     code: first.extensions?.code,
     fieldErrors,
   };
+}
+
+function resolveErrorFieldName(
+  err: ApiErrorShape["errors"][number],
+  fallbackName: string,
+): string {
+  if (err.fieldName) return err.fieldName;
+
+  const code = err.extensions?.code;
+  if (code === "ERR_ACCOUNT_ALREADY_EXIST") return "email";
+
+  const text = `${err.message ?? ""} ${err.name ?? ""}`.toLowerCase();
+  if (text.includes("email") || text.includes("e-mail")) return "email";
+
+  return fallbackName;
+}
+
+export function isDuplicateEmailError(parsed: ParsedApiError): boolean {
+  if (parsed.code === "ERR_ACCOUNT_ALREADY_EXIST") return true;
+  const text = `${parsed.message} ${Object.values(parsed.fieldErrors).join(" ")}`.toLowerCase();
+  return (
+    text.includes("already exist") ||
+    text.includes("already exists") ||
+    text.includes("уже существует") ||
+    text.includes("уже зарегистрир")
+  );
+}
+
+export function getDisplayErrorMessage(parsed: ParsedApiError): string {
+  return pickPrimaryMessage(parsed);
 }
 
 function parseApiErrorsText(errors: ApiErrorShape["errors"]): string {

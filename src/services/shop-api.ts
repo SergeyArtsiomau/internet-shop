@@ -21,9 +21,9 @@ export type ListingFilters = PaginationInput & {
   sorting?: { type: SortDirection; field: SortingField };
 };
 
-function cleanedListing(filters: ListingFilters): URLSearchParams {
-  const qs = new URLSearchParams();
-  qs.set(
+function encodeProductFilters(filters: ListingFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set(
     "pagination",
     JSON.stringify({
       pageSize: filters.pageSize ?? 12,
@@ -31,15 +31,15 @@ function cleanedListing(filters: ListingFilters): URLSearchParams {
     }),
   );
   if (filters.sorting) {
-    qs.set("sorting", JSON.stringify(filters.sorting));
+    params.set("sorting", JSON.stringify(filters.sorting));
   }
   if (filters.categoryIds?.length) {
-    qs.set("categoryIds", JSON.stringify(filters.categoryIds));
+    params.set("categoryIds", JSON.stringify(filters.categoryIds));
   }
   if (filters.name) {
-    qs.set("name", filters.name);
+    params.set("name", filters.name);
   }
-  return qs;
+  return params;
 }
 
 export async function signIn(payload: { email: string; password: string }) {
@@ -51,12 +51,12 @@ export async function signUp(payload: {
   password: string;
   commandId?: string | null;
 }) {
-  const bodyWithCommandId = {
+  const body = {
     ...payload,
     commandId:
       typeof payload.commandId === "undefined" ? "" : (payload.commandId ?? ""),
   };
-  return httpRequest<AuthResponse>("/signup", { method: "POST", body: bodyWithCommandId });
+  return httpRequest<AuthResponse>("/signup", { method: "POST", body });
 }
 
 export async function fetchProfile(token: string) {
@@ -79,8 +79,8 @@ export async function changePassword(
 }
 
 export async function fetchCategories(filters: PaginationInput | undefined = {}, token?: string | null) {
-  const qs = new URLSearchParams();
-  qs.set(
+  const params = new URLSearchParams();
+  params.set(
     "pagination",
     JSON.stringify({
       pageSize: filters.pageSize ?? 200,
@@ -88,12 +88,11 @@ export async function fetchCategories(filters: PaginationInput | undefined = {},
     }),
   );
 
-  const data = await httpRequest<ListResponse<Category>>("/categories", { token }, qs);
-  return data;
+  return httpRequest<ListResponse<Category>>("/categories", { token }, params);
 }
 
 export async function fetchProducts(filters: ListingFilters, token?: string | null) {
-  return httpRequest<ListResponse<Product>>("/products", { token }, cleanedListing(filters));
+  return httpRequest<ListResponse<Product>>("/products", { token }, encodeProductFilters(filters));
 }
 
 export async function fetchProduct(productId: string, token?: string | null) {
@@ -166,8 +165,8 @@ export async function createOrder(token: string, products: Array<{ id: string; q
 }
 
 export async function fetchOrders(filters: PaginationInput | undefined, token: string | null | undefined) {
-  const qs = new URLSearchParams();
-  qs.set(
+  const params = new URLSearchParams();
+  params.set(
     "pagination",
     JSON.stringify({
       pageSize: filters?.pageSize ?? 20,
@@ -175,7 +174,7 @@ export async function fetchOrders(filters: PaginationInput | undefined, token: s
     }),
   );
 
-  return httpRequest<ListResponse<Order>>("/orders", { token: token ?? undefined }, qs);
+  return httpRequest<ListResponse<Order>>("/orders", { token: token ?? undefined }, params);
 }
 
 export async function patchOrder(

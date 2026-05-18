@@ -2,7 +2,6 @@ import type { Product } from "@/types/shop";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-/** Снимок товара в корзине: цена может устареть, но для истории локально ок */
 export type CartLine = {
   productId: string;
   quantity: number;

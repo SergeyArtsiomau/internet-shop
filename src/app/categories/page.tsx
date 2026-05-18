@@ -131,7 +131,6 @@ function CategoryWorkspace() {
               <tr key={category.id}>
                 <td className="py-4">
                   {resolveMediaUrl(category.photo) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={resolveMediaUrl(category.photo)} alt="" className="h-16 w-28 rounded-xl object-cover" />
                   ) : (
                     <div className="flex h-16 w-28 items-center justify-center rounded-xl bg-neutral-800 text-[0.65rem] text-neutral-400">

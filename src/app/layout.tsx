@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SHOP_NAME } from "@/lib/site";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -18,8 +19,8 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Бакалея Побережья — демо-витрина Otus REST",
-  description: "Интернет-магазин на Next.js 15 c полноценной интеграцией Otus REST API.",
+  title: `${SHOP_NAME} — интернет-магазин`,
+  description: `${SHOP_NAME}: каталог, корзина и заказы на Next.js с Otus REST API.`,
 };
 
 export default function RootLayout({

@@ -13,17 +13,17 @@ type ProtectedGateProps = {
 export function ProtectedGate({ children }: ProtectedGateProps) {
   const router = useRouter();
   const token = useAuthStore((state) => state.token);
-  const clientReady = useClientGate();
+  const mounted = useClientGate();
 
   useEffect(() => {
-    if (!clientReady) return;
+    if (!mounted) return;
     if (!token) {
       const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
       router.replace(`/login?next=${next}`);
     }
-  }, [clientReady, router, token]);
+  }, [mounted, router, token]);
 
-  if (!clientReady) {
+  if (!mounted) {
     return (
       <div className="mx-auto mt-24 max-w-md rounded-2xl border border-dashed px-6 py-10 text-center text-sm text-neutral-600 dark:text-neutral-300">
         Подготавливаем доступ…
