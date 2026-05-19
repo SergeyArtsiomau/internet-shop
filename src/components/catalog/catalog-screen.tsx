@@ -386,8 +386,7 @@ export function CatalogScreen() {
           Рыночные новинки недели
         </h1>
         <p className="mt-4 max-w-3xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
-          Локальная витрина для учебного Otus REST. Добавляйте позиции, группируйте по категориям, оформляйте
-          заказ и отслеживайте статус — всё через один API без придуманных заглушек.
+          Локальная витрина для учебного Otus проекта.
         </p>
       </section>
 

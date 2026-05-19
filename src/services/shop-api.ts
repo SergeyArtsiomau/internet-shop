@@ -21,6 +21,10 @@ export type ListingFilters = PaginationInput & {
   sorting?: { type: SortDirection; field: SortingField };
 };
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function encodeProductFilters(filters: ListingFilters): URLSearchParams {
   const params = new URLSearchParams();
   params.set(
@@ -36,8 +40,15 @@ function encodeProductFilters(filters: ListingFilters): URLSearchParams {
   if (filters.categoryIds?.length) {
     params.set("categoryIds", JSON.stringify(filters.categoryIds));
   }
-  if (filters.name) {
-    params.set("name", filters.name);
+  const searchName = filters.name?.trim();
+  if (searchName) {
+    params.set(
+      "name",
+      JSON.stringify({
+        $regex: escapeRegex(searchName),
+        $options: "i",
+      }),
+    );
   }
   return params;
 }
