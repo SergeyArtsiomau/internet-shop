@@ -21,10 +21,6 @@ export type ListingFilters = PaginationInput & {
   sorting?: { type: SortDirection; field: SortingField };
 };
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function encodeProductFilters(filters: ListingFilters): URLSearchParams {
   const params = new URLSearchParams();
   params.set(
@@ -42,13 +38,8 @@ function encodeProductFilters(filters: ListingFilters): URLSearchParams {
   }
   const searchName = filters.name?.trim();
   if (searchName) {
-    params.set(
-      "name",
-      JSON.stringify({
-        $regex: escapeRegex(searchName),
-        $options: "i",
-      }),
-    );
+    // API парсит name как JSON; строка даёт поиск по подстроке без учёта регистра.
+    params.set("name", JSON.stringify(searchName));
   }
   return params;
 }
